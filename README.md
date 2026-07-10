@@ -1,4 +1,4 @@
-readme = """#  Priora — Predictive Maintenance System
+Priora — Predictive Maintenance System
 
 Sistema de detección de fallas y priorización de mantenimiento para motores eléctricos industriales, desarrollado en Azure Machine Learning.
 
