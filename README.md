@@ -8,17 +8,7 @@ Sistema de detección de fallas y priorización de mantenimiento para motores el
 
 Priora identifica el tipo de motor eléctrico y predice si presentará una falla, asignando automáticamente un nivel de prioridad de mantenimiento. El sistema soporta tres tipos de motores industriales.
 
----
 
-##  Tipos de Motor Soportados
-
-| Tipo | Dataset | Registros |
-|---|---|---|
-| AC Trifásico | Figshare DOI 10.6084/m9.figshare.27216219 | 19,982 |
-| DC Brushed | Zenodo DOI 10.5281/zenodo.4314249 | 377 |
-| AC Monofásico | Generador sintético físico-informado | 2,100 |
-
----
 =================================================================
          PRIORA v2 — RESUMEN FINAL
 =================================================================
