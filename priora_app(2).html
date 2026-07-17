@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IA·PRIORA v2 — Diagnóstico de Motores Eléctricos</title>
+<style>
+:root{
+  --bg:#050C18;--surf:#0A1628;--card:#0F1E35;--border:#162744;
+  --blue:#3B82F6;--blue2:#60A5FA;--blue3:#1D4ED8;
+  --green:#10B981;--amber:#F59E0B;--red:#EF4444;--orange:#F97316;
+  --text:#E2EBF6;--muted:#4B6A8A;--mono:'Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow-x:hidden}
+
+/* scanlines */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:9999}
+
+/* HEADER */
+header{background:var(--surf);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;gap:16px;height:60px;position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.4)}
+.logo-wrap{display:flex;align-items:center;gap:12px}
+.logo-mark{display:flex;align-items:center;gap:6px}
+.logo-ia{background:linear-gradient(135deg,var(--blue3),var(--blue));border-radius:6px 0 0 6px;padding:5px 10px;font-size:14px;font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 0 10px rgba(96,165,250,.5)}
+.logo-priora{background:linear-gradient(135deg,#0F2460,#1D4ED8);border-radius:0 6px 6px 0;padding:5px 12px;font-size:14px;font-weight:900;letter-spacing:4px;color:var(--blue2);border-left:1px solid var(--blue)}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:2px;margin-top:2px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.pill{display:flex;align-items:center;gap:6px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:4px 12px;font-size:9px;color:var(--green);letter-spacing:1px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{opacity:.6;box-shadow:0 0 0 5px transparent}}
+.ver-badge{font-size:9px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:3px 8px;letter-spacing:1px}
+
+/* LAYOUT */
+main{max-width:1140px;margin:0 auto;padding:24px 20px;display:grid;grid-template-columns:360px 1fr;gap:20px}
+
+/* CARD */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);opacity:.4}
+.sec-title{font-size:8px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+
+/* MOTOR TYPE BUTTONS */
+.motor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.mbt{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:12px 6px;cursor:pointer;transition:all .2s;text-align:center;color:var(--muted);font-family:var(--mono);font-size:8px;letter-spacing:1px;line-height:1.4}
+.mbt:hover{transform:translateY(-2px);border-color:var(--blue);color:var(--text)}
+.mbt.s-ac3{border-color:var(--blue);color:#93C5FD;background:rgba(59,130,246,.07);box-shadow:0 0 18px rgba(59,130,246,.12)}
+.mbt.s-dc {border-color:var(--green);color:#6EE7B7;background:rgba(16,185,129,.07);box-shadow:0 0 18px rgba(16,185,129,.12)}
+.mbt.s-ac1{border-color:var(--amber);color:#FCD34D;background:rgba(245,158,11,.07);box-shadow:0 0 18px rgba(245,158,11,.12)}
+.mbt-icon{font-size:26px;margin-bottom:6px;display:block}
+.mbt-sub{font-size:7px;color:var(--muted);margin-top:2px}
+
+/* MOTOR DIAGRAM */
+.diagram-wrap{display:flex;justify-content:center;margin-bottom:20px;min-height:110px;align-items:center}
+
+/* SLIDERS */
+.param-grp{margin-bottom:12px}
+.param-row{display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px}
+.param-name{color:var(--muted)}
+.param-val{font-weight:700;font-size:10px}
+.slider-wrap{position:relative;height:6px;background:var(--border);border-radius:3px}
+.slider-fill{position:absolute;top:0;left:0;height:100%;border-radius:3px;transition:width .15s,background .3s;pointer-events:none}
+.slider-thumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;border:2px solid var(--bg);transition:left .15s}
+input[type=range]{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer;height:100%;margin:0}
+
+/* DIAGNOSE BTN */
+#btn-run{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue3),var(--blue));color:#fff;border:none;border-radius:8px;font-family:var(--mono);font-size:11px;font-weight:900;letter-spacing:3px;cursor:pointer;transition:.2s;margin-top:8px;position:relative;overflow:hidden}
+#btn-run::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);opacity:0;transition:.2s}
+#btn-run:hover::after{opacity:1}
+#btn-run:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(59,130,246,.35)}
+#btn-run:active{transform:translateY(0)}
+
+/* RIGHT PANEL */
+.right{display:flex;flex-direction:column;gap:16px}
+
+/* HERO METRICS */
+.hero-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero-m{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center}
+.hero-lbl{font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:6px}
+.hero-val{font-size:20px;font-weight:900;line-height:1}
+
+/* PROB SECTION */
+.prob-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.prob-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+.prob-num{font-size:44px;font-weight:900;line-height:1;transition:color .4s;font-variant-numeric:tabular-nums}
+.prob-lbl{font-size:9px;color:var(--muted);text-align:right;line-height:1.6}
+.track{background:var(--border);border-radius:5px;height:10px;overflow:hidden;margin-bottom:8px}
+.fill{height:100%;border-radius:5px;transition:width .8s cubic-bezier(.4,0,.2,1),background .4s;width:0}
+.ticks{display:flex;justify-content:space-between;font-size:7px;color:var(--muted)}
+
+/* PRIORITY */
+.prio-card{border-radius:10px;padding:16px 20px;border:1.5px solid;transition:.4s;display:flex;align-items:center;gap:16px}
+.prio-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid;flex-shrink:0;transition:.4s}
+.prio-level{font-size:17px;font-weight:900;margin-bottom:3px}
+.prio-action{font-size:9px;opacity:.8;line-height:1.6;letter-spacing:.5px}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.chart-ttl{font-size:8px;color:var(--muted);letter-spacing:2px;margin-bottom:10px}
+canvas{width:100%!important;display:block}
+
+/* PARAM ANALYSIS */
+.param-analysis{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+
+/* HISTORY */
+.hist-wrap{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:18px}
+.log-list{list-style:none;display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto}
+.log-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:var(--card);font-size:9px;animation:fadeUp .3s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.log-t{color:var(--muted);min-width:55px}
+.log-type{color:var(--muted);min-width:90px}
+.log-p{font-weight:900;min-width:50px;text-align:right}
+
+/* IDLE */
+.idle{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px;gap:14px;color:var(--muted);text-align:center}
+.idle-gear{font-size:48px;opacity:.2;animation:spin 10s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:12px 28px;display:flex;justify-content:space-between;font-size:9px;color:var(--muted);background:var(--surf)}
+footer a{color:var(--blue2);text-decoration:none}
+
+@media(max-width:800px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-mark">
+      <div class="logo-ia">IA</div>
+      <div class="logo-priora">PRIORA</div>
+    </div>
+    <div>
+      <div class="logo-sub">predictive maintenance system</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="ver-badge">v2.0 · offline</div>
+    <div class="pill"><span class="dot"></span>sistema activo</div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div>
+    <div class="card">
+      <div class="sec-title">tipo de motor</div>
+      <div class="motor-grid">
+        <button class="mbt s-ac3" id="b-ac3" onclick="setMotor('ac3')">
+          <span class="mbt-icon">⚡</span>AC TRIFÁSICO<br><span class="mbt-sub">3Ø · industrial</span>
+        </button>
+        <button class="mbt" id="b-dc" onclick="setMotor('dc')">
+          <span class="mbt-icon">🔋</span>DC BRUSHED<br><span class="mbt-sub">corriente continua</span>
+        </button>
+        <button class="mbt" id="b-ac1" onclick="setMotor('ac1')">
+          <span class="mbt-icon">🔌</span>AC MONOFÁSICO<br><span class="mbt-sub">1Ø · doméstico</span>
+        </button>
+      </div>
+
+      <div class="sec-title">diagrama del motor</div>
+      <div class="diagram-wrap" id="diagram"></div>
+
+      <div class="sec-title">parámetros de sensores</div>
+      <div id="sliders"></div>
+
+      <button id="btn-run" onclick="run()">▶ EJECUTAR DIAGNÓSTICO</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <!-- Hero metrics -->
+    <div class="hero-row">
+      <div class="hero-m">
+        <div class="hero-lbl">tipo identificado</div>
+        <div class="hero-val" id="h-tipo" style="font-size:13px;color:var(--muted)">—</div>
+      </div>
+      <div class="hero-m">
+        <div class="hero-lbl">accuracy</div>
+        <div class="hero-val" id="h-acc" style="color:var(--green)">—</div>
+      </div>
+      <div class="hero-m">
+        <div class="hero-lbl">f1-score</div>
+        <div class="hero-val" id="h-f1" style="color:var(--blue2)">—</div>
+      </div>
+      <div class="hero-m">
+        <div class="hero-lbl">recall</div>
+        <div class="hero-val" id="h-rec" style="color:var(--amber)">—</div>
+      </div>
+    </div>
+
+    <!-- Result area -->
+    <div id="result-area">
+      <div class="idle">
+        <span class="idle-gear">⚙</span>
+        <p style="font-size:10px;line-height:2">Selecciona el tipo de motor<br>ajusta los parámetros<br>y ejecuta el diagnóstico</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- History -->
+<div style="max-width:1140px;margin:0 auto;padding:0 20px 28px">
+  <div class="hist-wrap">
+    <div class="sec-title">historial de diagnósticos</div>
+    <ul class="log-list" id="log-list">
+      <li style="color:var(--muted);font-size:9px;text-align:center;padding:10px">sin diagnósticos aún</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  <span>IA·PRIORA v2 · Google Colab · Ingeniería Electrónica · Yohaly</span>
+  <a href="https://github.com/yoh6ly/priora-maintenance-system" target="_blank">github.com/yoh6ly/priora-maintenance-system</a>
+</footer>
+
+<script>
+// ─── CONFIG v2 ───────────────────────────────────────────────
+const MOTORS = {
+  ac3:{
+    name:'AC Trifásico', icon:'⚡', color:'#3B82F6',
+    acc:'96.12%', f1:'90.44%', rec:'94.02%',
+    umbral: 0.26,
+    params:[
+      {id:'volt',  label:'Voltaje de línea [V]',    min:180, max:440,  step:1,   def:380,  unit:'V'},
+      {id:'curr',  label:'Corriente de línea [A]',  min:0,   max:50,   step:.1,  def:15,   unit:'A'},
+      {id:'temp',  label:'Temperatura [°C]',        min:20,  max:130,  step:1,   def:65,   unit:'°C'},
+      {id:'rpm',   label:'Velocidad [rpm]',         min:0,   max:3600, step:10,  def:1450, unit:'rpm'},
+      {id:'fp',    label:'Factor de potencia',      min:.5,  max:1,    step:.01, def:.88,  unit:''},
+      {id:'torq',  label:'Torque [Nm]',             min:0,   max:80,   step:.5,  def:42,   unit:'Nm'},
+    ],
+    th:{volt:{lo:340,hi:420},curr:{lo:0,hi:40},temp:{lo:20,hi:90},rpm:{lo:1300,hi:1600},fp:{lo:.75,hi:1},torq:{lo:0,hi:60}},
+    radarLbls:['Voltaje','Corriente','Temp','RPM','F.Potencia','Torque'],
+    importance:[0.768,0.092,0.052,0.043,0.029,0.016],
+    importLbls:['Torque','Desgaste','Temp Aire','Velocidad','Temp Proc','Type'],
+  },
+  dc:{
+    name:'DC Brushed', icon:'🔋', color:'#10B981',
+    acc:'100.00%', f1:'100.00%', rec:'100.00%',
+    umbral: 0.50,
+    params:[
+      {id:'volt',  label:'Voltaje armadura [V]',    min:0,   max:48,   step:.5,  def:24,   unit:'V'},
+      {id:'curr',  label:'Corriente [A]',           min:0,   max:20,   step:.1,  def:5,    unit:'A'},
+      {id:'temp',  label:'Temperatura [°C]',        min:20,  max:120,  step:1,   def:55,   unit:'°C'},
+      {id:'rpm',   label:'Velocidad [rpm]',         min:0,   max:5000, step:50,  def:2400, unit:'rpm'},
+      {id:'vib',   label:'Vibración [g]',           min:0,   max:5,    step:.1,  def:.3,   unit:'g'},
+      {id:'bemf',  label:'Back-EMF [V]',            min:0,   max:40,   step:.5,  def:20,   unit:'V'},
+    ],
+    th:{volt:{lo:18,hi:30},curr:{lo:0,hi:12},temp:{lo:20,hi:80},rpm:{lo:1800,hi:3200},vib:{lo:0,hi:1.5},bemf:{lo:14,hi:28}},
+    radarLbls:['Voltaje','Corriente','Temp','RPM','Vibración','Back-EMF'],
+    importance:[.35,.25,.18,.12,.07,.03],
+    importLbls:['Voltaje','Corriente','Velocidad','Temp','Vibración','Back-EMF'],
+  },
+  ac1:{
+    name:'AC Monofásico', icon:'🔌', color:'#F59E0B',
+    acc:'100.00%', f1:'100.00%', rec:'100.00%',
+    umbral: 0.50,
+    params:[
+      {id:'volt',  label:'Voltaje [V]',             min:90,  max:140,  step:.5,  def:120,  unit:'V'},
+      {id:'curr',  label:'Corriente [A]',           min:0,   max:20,   step:.1,  def:8,    unit:'A'},
+      {id:'temp',  label:'Temperatura [°C]',        min:20,  max:120,  step:1,   def:65,   unit:'°C'},
+      {id:'rpm',   label:'Velocidad [rpm]',         min:1000,max:3600, step:10,  def:1750, unit:'rpm'},
+      {id:'fp',    label:'Factor de potencia',      min:.5,  max:1,    step:.01, def:.92,  unit:''},
+      {id:'vib',   label:'Vibración [g]',           min:0,   max:5,    step:.1,  def:.5,   unit:'g'},
+    ],
+    th:{volt:{lo:108,hi:132},curr:{lo:0,hi:14},temp:{lo:20,hi:90},rpm:{lo:1650,hi:1850},fp:{lo:.8,hi:1},vib:{lo:0,hi:1.8}},
+    radarLbls:['Voltaje','Corriente','Temp','RPM','F.Potencia','Vibración'],
+    importance:[.30,.24,.20,.14,.08,.04],
+    importLbls:['Voltaje','Corriente','Temp','Vibración','RPM','F.Potencia'],
+  }
+};
+
+const PRIO=[
+  {lo:0,  hi:20, lbl:'NORMAL',   icon:'✓', col:'#10B981', bg:'rgba(16,185,129,.07)',  brd:'#10B981', act:'Motor operando dentro de parámetros normales.'},
+  {lo:20, hi:50, lbl:'ATENCIÓN', icon:'!', col:'#F59E0B', bg:'rgba(245,158,11,.07)',  brd:'#F59E0B', act:'Incrementar frecuencia de monitoreo.'},
+  {lo:50, hi:80, lbl:'RIESGO',   icon:'⚠', col:'#F97316', bg:'rgba(249,115,22,.07)', brd:'#F97316', act:'Programar mantenimiento a corto plazo.'},
+  {lo:80, hi:101,lbl:'CRÍTICO',  icon:'✕', col:'#EF4444', bg:'rgba(239,68,68,.07)',   brd:'#EF4444', act:'Detener motor para inspección inmediata.'},
+];
+
+let cur='ac3', vals={}, diagN=0;
+
+// ─── DIAGRAMS ────────────────────────────────────────────────
+function svgDiagram(t){
+  const c=MOTORS[t].color;
+  if(t==='ac3') return `<svg viewBox="0 0 220 110" width="220" height="110">
+    <defs><radialGradient id="rg1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c}" stop-opacity=".18"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient></defs>
+    <rect x="38" y="18" width="144" height="74" rx="7" fill="#0F1E35" stroke="${c}" stroke-width="1.5"/>
+    <rect x="0"  y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <rect x="182" y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <circle cx="110" cy="55" r="26" fill="url(#rg1)" stroke="${c}" stroke-width="1.2"/>
+    <circle cx="110" cy="55" r="10" fill="#050C18" stroke="${c}" stroke-width="1.5"/>
+    <circle cx="110" cy="55" r="3"  fill="${c}"/>
+    <line x1="72"  y1="18" x2="72"  y2="8"  stroke="${c}" stroke-width="2"/><circle cx="72"  cy="6" r="3" fill="${c}"/>
+    <line x1="110" y1="18" x2="110" y2="5"  stroke="${c}" stroke-width="2"/><circle cx="110" cy="3" r="3" fill="${c}"/>
+    <line x1="148" y1="18" x2="148" y2="8"  stroke="${c}" stroke-width="2"/><circle cx="148" cy="6" r="3" fill="${c}"/>
+    <rect x="82"  y="92" width="56" height="12" rx="2" fill="#0A1628" stroke="${c}" stroke-width=".8" opacity=".6"/>
+    <text x="110" y="107" text-anchor="middle" fill="${c}" font-size="8" font-family="monospace" opacity=".5">AC TRIFÁSICO 3Ø</text>
+  </svg>`;
+  if(t==='dc') return `<svg viewBox="0 0 220 110" width="220" height="110">
+    <defs><radialGradient id="rg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c}" stop-opacity=".18"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient></defs>
+    <rect x="38" y="18" width="144" height="74" rx="7" fill="#0F1E35" stroke="${c}" stroke-width="1.5"/>
+    <rect x="0"  y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <rect x="182" y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <circle cx="110" cy="55" r="26" fill="url(#rg2)" stroke="${c}" stroke-width="1.2"/>
+    <circle cx="110" cy="55" r="10" fill="#050C18" stroke="${c}" stroke-width="1.5"/>
+    <ellipse cx="110" cy="92" rx="28" ry="6" stroke="${c}" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+    <rect x="99" y="90" width="5" height="9" rx="1" fill="${c}" opacity=".7"/>
+    <rect x="107" y="90" width="5" height="9" rx="1" fill="${c}" opacity=".7"/>
+    <rect x="116" y="90" width="5" height="9" rx="1" fill="${c}" opacity=".7"/>
+    <rect x="50" y="26" width="7" height="9" rx="1" fill="#0A1628" stroke="${c}" stroke-width=".8"/>
+    <rect x="62" y="26" width="7" height="9" rx="1" fill="#0A1628" stroke="${c}" stroke-width=".8"/>
+    <circle cx="110" cy="55" r="3" fill="${c}"/>
+    <text x="110" y="107" text-anchor="middle" fill="${c}" font-size="8" font-family="monospace" opacity=".5">DC BRUSHED</text>
+  </svg>`;
+  return `<svg viewBox="0 0 220 110" width="220" height="110">
+    <defs><radialGradient id="rg3" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c}" stop-opacity=".18"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient></defs>
+    <rect x="38" y="18" width="144" height="74" rx="7" fill="#0F1E35" stroke="${c}" stroke-width="1.5"/>
+    <rect x="0"  y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <rect x="182" y="44" width="38" height="22" rx="3" fill="#0A1628" stroke="${c}" stroke-width="1" opacity=".8"/>
+    <circle cx="110" cy="55" r="26" fill="url(#rg3)" stroke="${c}" stroke-width="1.2"/>
+    <circle cx="110" cy="55" r="10" fill="#050C18" stroke="${c}" stroke-width="1.5"/>
+    <rect x="158" y="10" width="12" height="22" rx="2" fill="#0A1628" stroke="${c}" stroke-width="1"/>
+    <line x1="158" y1="17" x2="155" y2="17" stroke="${c}" stroke-width="1.5"/>
+    <line x1="158" y1="24" x2="155" y2="24" stroke="${c}" stroke-width="1.5"/>
+    <line x1="72"  y1="18" x2="72"  y2="8"  stroke="${c}" stroke-width="2"/><circle cx="72"  cy="6" r="3" fill="${c}"/>
+    <line x1="110" y1="18" x2="110" y2="5"  stroke="${c}" stroke-width="2"/><circle cx="110" cy="3" r="3" fill="${c}"/>
+    <rect x="82"  y="92" width="56" height="12" rx="2" fill="#0A1628" stroke="${c}" stroke-width=".8" opacity=".6"/>
+    <circle cx="110" cy="55" r="3" fill="${c}"/>
+    <text x="110" y="107" text-anchor="middle" fill="${c}" font-size="8" font-family="monospace" opacity=".5">AC MONOFÁSICO 1Ø</text>
+  </svg>`;
+}
+
+// ─── SLIDERS ─────────────────────────────────────────────────
+function renderSliders(){
+  const m=MOTORS[cur];
+  document.getElementById('sliders').innerHTML=m.params.map(p=>{
+    vals[p.id]=p.def;
+    const pct=((p.def-p.min)/(p.max-p.min))*100;
+    return `<div class="param-grp">
+      <div class="param-row">
+        <span class="param-name">${p.label}</span>
+        <span class="param-val" id="v-${p.id}" style="color:${m.color}">${p.def}${p.unit}</span>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-fill" id="sf-${p.id}" style="width:${pct}%;background:${m.color}"></div>
+        <div class="slider-thumb" id="st-${p.id}" style="left:${pct}%;background:${m.color}"></div>
+        <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.def}"
+          oninput="upd('${p.id}','${p.unit}',${p.min},${p.max},this.value)"/>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function upd(id,unit,min,max,v){
+  vals[id]=parseFloat(v);
+  const pct=((v-min)/(max-min))*100;
+  document.getElementById('v-'+id).textContent=parseFloat(v)+unit;
+  document.getElementById('sf-'+id).style.width=pct+'%';
+  document.getElementById('st-'+id).style.left=pct+'%';
+}
+
+function setMotor(t){
+  cur=t;
+  ['ac3','dc','ac1'].forEach(k=>{
+    document.getElementById('b-'+k).className='mbt'+(k===t?' s-'+k:'');
+  });
+  document.getElementById('diagram').innerHTML=svgDiagram(t);
+  renderSliders();
+  const m=MOTORS[t];
+  document.getElementById('h-tipo').textContent=m.name;
+  document.getElementById('h-tipo').style.color=m.color;
+  document.getElementById('h-acc').textContent=m.acc;
+  document.getElementById('h-f1').textContent=m.f1;
+  document.getElementById('h-rec').textContent=m.rec;
+}
+
+// ─── DIAGNOSIS ───────────────────────────────────────────────
+function run(){
+  const m=MOTORS[cur];
+  const sliders=document.querySelectorAll('input[type=range]');
+  m.params.forEach((p,i)=>{ if(sliders[i]) vals[p.id]=parseFloat(sliders[i].value); });
+
+  let score=0;
+  const pScores={};
+  m.params.forEach(p=>{
+    const v=vals[p.id]??p.def, th=m.th[p.id];
+    if(!th){pScores[p.id]=0;return;}
+    let s=0;
+    if(v<th.lo) s=(th.lo-v)/(th.lo-m.params.find(x=>x.id===p.id).min+1)*60;
+    else if(v>th.hi) s=(v-th.hi)/(m.params.find(x=>x.id===p.id).max-th.hi+1)*60;
+    pScores[p.id]=Math.min(s,100);
+    score+=pScores[p.id];
+  });
+
+  let prob=Math.min((score/m.params.length)*1.8,99.9);
+  if(Object.values(pScores).every(s=>s<5)) prob=Math.random()*8;
+
+  const prio=PRIO.find(p=>prob>=p.lo&&prob<p.hi)||PRIO[3];
+  renderResult(prob,prio,pScores);
+  addLog(prob,prio);
+}
+
+function getPrio(prob){ return PRIO.find(p=>prob>=p.lo&&prob<p.hi)||PRIO[3]; }
+
+// ─── RENDER RESULT ───────────────────────────────────────────
+function renderResult(prob,prio,pScores){
+  const m=MOTORS[cur];
+  document.getElementById('result-area').innerHTML=`
+    <div class="prob-card">
+      <div class="prob-top">
+        <div>
+          <div style="font-size:8px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">PROBABILIDAD DE FALLA</div>
+          <div class="prob-num" id="pnum" style="color:${prio.col}">0.0%</div>
+        </div>
+        <div class="prob-lbl">
+          <div style="font-size:24px">${prio.icon}</div>
+          <div style="color:${prio.col};font-weight:900;font-size:13px;margin-top:4px">${prio.lbl}</div>
+          <div style="font-size:8px;color:var(--muted)">umbral: ${Math.round(m.umbral*100)}%</div>
+        </div>
+      </div>
+      <div class="track"><div class="fill" id="pfill" style="background:${prio.col}"></div></div>
+      <div class="ticks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+    </div>
+
+    <div class="prio-card" id="pcard" style="background:${prio.bg};border-color:${prio.brd}">
+      <div class="prio-icon" style="color:${prio.col};border-color:${prio.col}">${prio.icon}</div>
+      <div>
+        <div class="prio-level" style="color:${prio.col}">🔧 ${prio.lbl}</div>
+        <div class="prio-action" style="color:${prio.col}">${prio.act}</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-ttl">señal del motor</div>
+        <canvas id="c-sig" height="90"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-ttl">radar de parámetros</div>
+        <canvas id="c-rad" height="90"></canvas>
+      </div>
+    </div>
+
+    <div class="param-analysis">
+      <div class="chart-ttl">análisis por parámetro — score de anomalía</div>
+      <canvas id="c-bar" height="75"></canvas>
+    </div>
+
+    <div class="chart-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div class="chart-ttl">importancia de variables (modelo entrenado)</div>
+      <canvas id="c-imp" height="75"></canvas>
+    </div>
+  `;
+
+  // Animate counter
+  let n=0; const t=Math.round(prob*10)/10; const st=t/50;
+  const iv=setInterval(()=>{
+    n=Math.min(n+st,t);
+    const el=document.getElementById('pnum');
+    const fl=document.getElementById('pfill');
+    if(el) el.textContent=n.toFixed(1)+'%';
+    if(fl) fl.style.width=n+'%';
+    if(n>=t){clearInterval(iv);drawAll(prob,pScores);}
+  },16);
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────
+function drawAll(prob,pScores){ drawSig(prob); drawRadar(pScores); drawBar(pScores); drawImp(); }
+
+function ctx2d(id,h){
+  const c=document.getElementById(id); if(!c) return null;
+  const dpr=window.devicePixelRatio||1;
+  c.width=c.offsetWidth*dpr; c.height=h*dpr;
+  const x=c.getContext('2d'); x.scale(dpr,dpr);
+  return {ctx:x,W:c.offsetWidth,H:h};
+}
+
+function drawSig(prob){
+  const r=ctx2d('c-sig',90); if(!r) return;
+  const {ctx,W,H}=r; const prio=getPrio(prob);
+  ctx.fillStyle='#0A1628'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#162744'; ctx.lineWidth=.5;
+  [.25,.5,.75].forEach(y=>{ctx.beginPath();ctx.moveTo(0,H*y);ctx.lineTo(W,H*y);ctx.stroke();});
+
+  ctx.strokeStyle=prio.col; ctx.lineWidth=1.5;
+  ctx.shadowColor=prio.col; ctx.shadowBlur=prob>50?10:4;
+  ctx.beginPath();
+  const noise=prob/100;
+  for(let x=0;x<W;x++){
+    const t=(x/W)*Math.PI*10;
+    const sig=Math.sin(t)*.65+(prob>40?Math.sin(t*2.3)*noise*.35:0)+(Math.random()-.5)*noise*.2;
+    const y=H/2-sig*(H/2-8);
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.shadowBlur=0;
+}
+
+function drawRadar(pScores){
+  const r=ctx2d('c-rad',90); if(!r) return;
+  const {ctx,W,H}=r; const m=MOTORS[cur];
+  ctx.fillStyle='#0A1628'; ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2,R=Math.min(W,H)/2-14;
+  const keys=Object.keys(pScores); const n=keys.length;
+  const lbls=m.radarLbls||keys;
+
+  [.33,.66,1].forEach(frac=>{
+    ctx.beginPath(); ctx.strokeStyle='#162744'; ctx.lineWidth=.5;
+    keys.forEach((_,i)=>{
+      const a=(i/n)*Math.PI*2-Math.PI/2;
+      const x=cx+Math.cos(a)*R*frac, y=cy+Math.sin(a)*R*frac;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }); ctx.closePath(); ctx.stroke();
+  });
+  keys.forEach((_,i)=>{
+    const a=(i/n)*Math.PI*2-Math.PI/2;
+    ctx.beginPath(); ctx.strokeStyle='#162744'; ctx.lineWidth=.5;
+    ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R); ctx.stroke();
+  });
+
+  ctx.beginPath(); ctx.fillStyle=m.color+'22'; ctx.strokeStyle=m.color; ctx.lineWidth=1.5;
+  keys.forEach((k,i)=>{
+    const score=Math.min(pScores[k]||0,100)/100;
+    const a=(i/n)*Math.PI*2-Math.PI/2;
+    const rr=R*(1-score*.8);
+    const x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle='#4B6A8A'; ctx.font='7px monospace'; ctx.textAlign='center';
+  keys.forEach((_,i)=>{
+    const a=(i/n)*Math.PI*2-Math.PI/2;
+    const x=cx+Math.cos(a)*(R+10), y=cy+Math.sin(a)*(R+10)+3;
+    ctx.fillText(lbls[i]||keys[i],x,y);
+  });
+}
+
+function drawBar(pScores){
+  const r=ctx2d('c-bar',75); if(!r) return;
+  const {ctx,W,H}=r; const m=MOTORS[cur];
+  ctx.fillStyle='#0A1628'; ctx.fillRect(0,0,W,H);
+  const keys=Object.keys(pScores); const bw=Math.floor((W-16)/keys.length)-5;
+  const maxH=H-20;
+  keys.forEach((k,i)=>{
+    const score=Math.min(pScores[k]||0,100);
+    const bh=(score/100)*maxH; const x=8+i*(bw+5); const y=H-18-bh;
+    const col=score<20?'#10B981':score<50?'#F59E0B':score<80?'#F97316':'#EF4444';
+    ctx.fillStyle=col+'22'; ctx.fillRect(x,H-18-maxH,bw,maxH);
+    ctx.fillStyle=col; ctx.fillRect(x,y,bw,bh);
+    ctx.fillStyle='#4B6A8A'; ctx.font='7px monospace'; ctx.textAlign='center';
+    ctx.fillText(k,x+bw/2,H-5);
+    if(score>3){ctx.fillStyle=col; ctx.fillText(Math.round(score)+'%',x+bw/2,y-2);}
+  });
+}
+
+function drawImp(){
+  const r=ctx2d('c-imp',75); if(!r) return;
+  const {ctx,W,H}=r; const m=MOTORS[cur];
+  ctx.fillStyle='#0A1628'; ctx.fillRect(0,0,W,H);
+  const imps=m.importance; const lbls=m.importLbls;
+  const avg=imps.reduce((a,b)=>a+b,0)/imps.length;
+  const bw=Math.floor((W-16)/imps.length)-5;
+  const maxH=H-20; const maxImp=Math.max(...imps);
+
+  imps.forEach((imp,i)=>{
+    const bh=(imp/maxImp)*maxH; const x=8+i*(bw+5); const y=H-18-bh;
+    const col=imp>avg?m.color:'#1D4ED8';
+    ctx.fillStyle=col+'22'; ctx.fillRect(x,H-18-maxH,bw,maxH);
+    ctx.fillStyle=col; ctx.fillRect(x,y,bw,bh);
+    ctx.fillStyle='#4B6A8A'; ctx.font='7px monospace'; ctx.textAlign='center';
+    ctx.fillText(lbls[i],x+bw/2,H-5);
+    ctx.fillStyle=col; ctx.fillText((imp*100).toFixed(1)+'%',x+bw/2,y-2);
+  });
+  // avg line
+  ctx.strokeStyle='#4B6A8A'; ctx.lineWidth=.8; ctx.setLineDash([3,3]);
+  const avgY=H-18-(avg/maxImp)*maxH;
+  ctx.beginPath(); ctx.moveTo(8,avgY); ctx.lineTo(W-8,avgY); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ─── LOG ─────────────────────────────────────────────────────
+function addLog(prob,prio){
+  const list=document.getElementById('log-list');
+  const m=MOTORS[cur];
+  const t=new Date().toTimeString().slice(0,8);
+  diagN++; if(diagN===1) list.innerHTML='';
+  const li=document.createElement('li');
+  li.className='log-item';
+  li.innerHTML=`<span class="log-dot" style="background:${prio.col}"></span>
+    <span class="log-t">${t}</span>
+    <span class="log-type">${m.icon} ${m.name}</span>
+    <span style="flex:1"></span>
+    <span class="log-p" style="color:${prio.col}">${prob.toFixed(1)}%</span>
+    <span style="font-size:8px;color:${prio.col};min-width:70px;text-align:right">${prio.lbl}</span>`;
+  list.insertBefore(li,list.firstChild);
+  if(list.children.length>12) list.removeChild(list.lastChild);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+setMotor('ac3');
+</script>
+</body>
+</html>
