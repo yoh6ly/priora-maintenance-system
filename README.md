@@ -19,76 +19,62 @@ Priora identifica el tipo de motor eléctrico y predice si presentará una falla
 | AC Monofásico | Generador sintético físico-informado | 2,100 |
 
 ---
+=================================================================
+         PRIORA v2 — RESUMEN FINAL
+=================================================================
 
-##  Modelos
+  DATASETS
+   AC Trifásico:  12,000 registros (9,661 reales + 2,339 sint.)
+   DC Brushed:    377 registros (reales — Zenodo)
+   AC Monofásico: 2,200 registros (sintéticos físico-informados)
+   Total:         14,577 registros
 
-| Modelo | Objetivo | Accuracy | F1-Score |
-|---|---|---|---|
-| Random Forest | Identificación de tipo de motor | 100.00% | 100.00% |
-| XGBoost + SMOTE | Detección de fallas | 99.98% | 99.99% |
+  MODELOS INDEPENDIENTES POR TIPO
+Tipo                 Modelo                   Accuracy       F1   Recall
+----------------------------------------------------------------------
+AC Trifásico         XGBoost (umbral 26%)       96.12%   90.44%   94.02%
+DC Brushed           XGBoost                   100.00%  100.00%  100.00%
+AC Monofásico        XGBoost                   100.00%  100.00%  100.00%
+Clasificador tipo    Random Forest             100.00%  100.00%  100.00%
 
----
+ SISTEMA DE PRIORIZACIÓN (AC Trifásico)
+   🟢 Normal   (0-20%):  1,872 motores
+   🟡 Atención (20-50%):    70 motores
+   🟠 Riesgo   (50-80%):    38 motores
+   🔴 Crítico  (80-100%):  420 motores
 
-##  Sistema de Priorización
+  CORRECCIONES APLICADAS vs v1
+   Modelos independientes por tipo (elimina sesgo)
+   Fallas sintéticas graduales con superposición
+   Umbral ajustado a 26% (mejor recall)
+   Comparación de 3 modelos (XGBoost ganador)
+   F1 AC Trifásico: 72.48% → 90.44% (+17.96%)
+   Recall AC Trifásico: 79.41% → 94.02% (+14.61%)
 
-| Probabilidad de Falla | Prioridad | Acción |
-|---|---|---|
-| 0% — 20% | 🟢 Normal | Motor operando correctamente |
-| 20% — 50% | 🟡 Atención | Incrementar frecuencia de monitoreo |
-| 50% — 80% | 🟠 Riesgo | Programar mantenimiento a corto plazo |
-| 80% — 100% | 🔴 Crítico | Detener motor para inspección inmediata |
+ MODELOS GUARDADOS
+   clf_tipo.pkl — 106.9 KB
+   modelo_ac1.pkl — 152.2 KB
+   modelo_ac3.pkl — 492.4 KB
+   modelo_dc.pkl — 155.9 KB
+   scaler_ac1.pkl — 0.7 KB
+   scaler_ac3.pkl — 0.7 KB
+   scaler_dc.pkl — 0.8 KB
+   scaler_tipo.pkl — 0.7 KB
 
----
+===========================================================
+ PRIORA v2
+===========================================================                      
 
-##  Pipeline
-Datos de sensores
-↓
-Identificación del tipo de motor (Random Forest)
-↓
-Detección de falla (XGBoost + SMOTE)
-↓
-Score de probabilidad (0-100%)
-↓
-Prioridad de mantenimiento
-
----
-
-##  Dataset Total
-
-- **Total registros:** 22,459
-- **Normales:** 4,678 (20.8%)
-- **Fallas:** 17,781 (79.2%)
-
----
-
-##  Tecnologías
-
-- **Plataforma:** Azure Machine Learning
-- **Lenguaje:** Python 3.10
-- **Librerías:** scikit-learn, XGBoost, imbalanced-learn, pandas, numpy, h5py, joblib
-
----
-
-##  Estructura del Proyecto
-├── priora_maintenance_system.ipynb  # Notebook principal
-├── priora_modelo_tipo.pkl           # Modelo identificador de tipo
-├── priora_modelo_falla.pkl          # Modelo detector de fallas
-├── priora_scaler.pkl                # Normalizador
-├── priora_label_encoder.pkl         # Codificador de tipos
-└── README.md                        # Este archivo
+# Este archivo
 
 ---
 
 ## 👤 Autor
 
 **Yohaly De La Rosa S.**
-Ingeniería Electrónica | Azure Machine Learning
+Ingeniería Electrónica | Machine Learning
 github.com/yoh6ly/priora-maintenance-system
 
 ---
 
-*Desarrollado con Python en Azure Machine Learning Studio*
-"""
-
-with open('README.md', 'w', encoding='utf-8') as f:
-    f.write(readme)
+*Desarrollado con Python en Azure Machine Learning Studio y google colab*
