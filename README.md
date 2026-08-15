@@ -33,7 +33,15 @@
 
 ## 🎯 Overview
 
-**PRIORA** is an intelligent predictive maintenance system designed to detect faults and prioritize maintenance for industrial electric motors. The system automatically identifies motor type and predicts failure probability, assigning maintenance priority levels.
+**PRIORA** — Sistema de Mantenimiento Predictivo de Motores Eléctricos Industriales
+- Modelos XGBoost especializados por tipo de señal física (proceso, vibración, 
+  corriente) — F1 hasta 99.45% en diagnóstico por vibración
+- Datasets 100% reales (UCI, NASA, Zenodo) — 11,361 registros, sin datos sintéticos
+- Auditoría de sesgo mediante validación cruzada con pipeline completo por fold
+- Prototipo de hardware funcional (ESP32, INA219, DHT22) con servidor Flask 
+  seguro (API Key, rate limiting, auditoría) operando en red local
+- Panel de control web con diagnóstico y priorización en 4 niveles en tiempo real
+- Repositorio: github.com/yoh6ly/priora-maintenance-system
 
 ### **Key Capabilities:**
 - 🔍 **Motor Type Classification** — Identifies AC 3-phase, AC single-phase, and DC brushed motors
