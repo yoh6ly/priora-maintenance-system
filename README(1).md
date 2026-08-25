@@ -5,11 +5,6 @@ modelos de Machine Learning auditados con rigor estadístico, y una plataforma
 de software segura para diagnosticar en tiempo real el estado de motores
 eléctricos industriales.
 
-> **Nota:** este README describe la versión final del proyecto (v3), que
-> reduce el alcance de 3 a 2 tipos de motor (AC Trifásico y DC Brushed) para
-> priorizar la calidad de los datasets reales utilizados, y agrega hardware
-> funcional, servidor con ciberseguridad, y documentación nivel tesis.
-
 ---
 
 ## 📌 Descripción
